@@ -3,6 +3,7 @@ import { fetchPhotoList } from './js/fetchPhoto';
 import renderGallery from './js/render-gallery';
 import Notiflix from 'notiflix';
 import SimpleLightbox from 'simplelightbox';
+import throttle from 'lodash.throttle';
 
 import 'simplelightbox/dist/simple-lightbox.min.css';
 
@@ -14,6 +15,7 @@ let searchUserText = 'popular';
 let page = 0;
 let simpleLightBox = new SimpleLightbox('.gallery a');
 const perPage = 40;
+const trottleLoadMore = throttle(onLoadMorePhotos, 200);
 
 startTitlePage();
 
@@ -47,7 +49,7 @@ function onSearchPhotos(e) {
         alertNoImagesFound();
       } else {
         renderGallery(data.hits);
-        window.addEventListener('scroll', onLoadMorePhotos);
+        window.addEventListener('scroll', trottleLoadMore, false);
         simpleLightBox.refresh();
         alertImagesFound(data);
       }
@@ -59,16 +61,16 @@ function onSearchPhotos(e) {
 }
 
 function onLoadMorePhotos() {
-  const documentRect = document.documentElement.getBoundingClientRect();
-
-  if (documentRect.bottom < document.documentElement.clientHeight + 50) {
+  const documentRect = document.documentElement.getBoundingClientRect().bottom;
+  console.log('2');
+  if (documentRect < document.documentElement.clientHeight + 10) {
     page += 1;
     fetchPhotoList(searchUserText, page, perPage)
       .then(({ data }) => {
         const totalPages = Math.ceil(data.totalHits / perPage);
         if (page >= totalPages) {
-          window.removeEventListener('scroll', onLoadMorePhotos);
           alertEndOfSearch();
+          window.removeEventListener('scroll', trottleLoadMore, false);
         } else {
           renderGallery(data.hits);
           simpleLightBox.refresh();
@@ -101,7 +103,7 @@ function alertEndOfSearch() {
 }
 
 refs.arrowTop.onclick = function () {
-  window.scrollTo(window.pageXOffset, 0);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 window.addEventListener('scroll', function () {
