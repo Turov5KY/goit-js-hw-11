@@ -13,7 +13,7 @@ let searchUserText = 'popular';
 let page = 0;
 let simpleLightBox = new SimpleLightbox('.gallery a');
 const perPage = 40;
-const trottleLoadMore = throttle(onLoadMorePhotos, 5000);
+const trottleLoadMore = throttle(onLoadMorePhotos, 1000);
 
 async function onSearchPhotos(e) {
   e.preventDefault();
