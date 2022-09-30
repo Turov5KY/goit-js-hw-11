@@ -7,31 +7,15 @@ import throttle from 'lodash.throttle';
 
 import 'simplelightbox/dist/simple-lightbox.min.css';
 
-const randomNumber = Math.trunc(Math.random() * (1 - 10) + 10);
-
 refs.searchForm.addEventListener('submit', onSearchPhotos);
 
 let searchUserText = 'popular';
 let page = 0;
 let simpleLightBox = new SimpleLightbox('.gallery a');
 const perPage = 40;
-const trottleLoadMore = throttle(onLoadMorePhotos, 200);
+const trottleLoadMore = throttle(onLoadMorePhotos, 5000);
 
-startTitlePage();
-
-function startTitlePage() {
-  fetchPhotoList(searchUserText, randomNumber, 6)
-    .then(({ data }) => {
-      renderGallery(data.hits);
-      simpleLightBox = new SimpleLightbox('.gallery a').refresh();
-    })
-    .catch(error => console.log(error))
-    .finally(() => {
-      refs.searchForm.reset();
-    });
-}
-
-function onSearchPhotos(e) {
+async function onSearchPhotos(e) {
   e.preventDefault();
   window.scrollTo({ top: 0 });
   page = 1;
@@ -43,40 +27,41 @@ function onSearchPhotos(e) {
     return;
   }
 
-  fetchPhotoList(searchUserText, page, perPage)
-    .then(({ data }) => {
-      if (data.totalHits === 0) {
-        alertNoImagesFound();
-      } else {
-        renderGallery(data.hits);
-        window.addEventListener('scroll', trottleLoadMore, false);
-        simpleLightBox.refresh();
-        alertImagesFound(data);
-      }
-    })
-    .catch(error => console.log(error))
-    .finally(() => {
-      refs.searchForm.reset();
-    });
+  try {
+    const respons = await fetchPhotoList(searchUserText, page, perPage);
+    if (respons.data.totalHits === 0) {
+      alertNoImagesFound();
+    } else {
+      renderGallery(respons.data.hits);
+      window.addEventListener('scroll', trottleLoadMore, false);
+      simpleLightBox.refresh();
+      alertImagesFound(respons.data);
+    }
+    refs.searchForm.reset();
+  } catch (error) {
+    console.log(error);
+  }
 }
 
-function onLoadMorePhotos() {
+async function onLoadMorePhotos() {
   const documentRect = document.documentElement.getBoundingClientRect().bottom;
-  console.log('2');
-  if (documentRect < document.documentElement.clientHeight + 10) {
-    page += 1;
-    fetchPhotoList(searchUserText, page, perPage)
-      .then(({ data }) => {
-        const totalPages = Math.ceil(data.totalHits / perPage);
-        if (page >= totalPages) {
-          alertEndOfSearch();
-          window.removeEventListener('scroll', trottleLoadMore, false);
-        } else {
-          renderGallery(data.hits);
-          simpleLightBox.refresh();
-        }
-      })
-      .catch(error => console.log(error));
+  refs.loader.classList.add('is-hiden')
+  if (documentRect < document.documentElement.clientHeight + 50) {
+    try {
+      page += 1;
+      const respons = await fetchPhotoList(searchUserText, page, perPage);
+      const totalPages = Math.ceil(respons.data.totalHits / perPage);
+      if (page >= totalPages) {
+        refs.loader.classList.remove('is-hiden');
+        alertEndOfSearch();
+        window.removeEventListener('scroll', trottleLoadMore, false);
+      } else {
+        renderGallery(respons.data.hits);
+        simpleLightBox.refresh();
+      }
+    } catch (error) {
+      console.log(error);
+    }
   }
 }
 
